@@ -1,0 +1,51 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - PolarisPIS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to registry
+      uses: docker/login-action@v2
+      with:
+        registry: https://github.com/davloz/pissemaforo/
+        username: ${{ secrets.AzureAppService_ContainerUsername_c2200f423e844860958831e75d5b3751 }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_af3f79dd1db449c39ef865c50575d4c9 }}
+
+    - name: Build and push container image to registry
+      uses: docker/build-push-action@v3
+      with:
+        push: true
+        tags: github.com/davloz/pissemaforo/${{ secrets.AzureAppService_ContainerUsername_c2200f423e844860958831e75d5b3751 }}/node:${{ github.sha }}
+        file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'PolarisPIS'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_d64e931b0453483b877e58f23bbdc723 }}
+        images: 'github.com/davloz/pissemaforo/${{ secrets.AzureAppService_ContainerUsername_c2200f423e844860958831e75d5b3751 }}/node:${{ github.sha }}'
